@@ -14,26 +14,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Capture public authorized source
+      - name: Capture desktop and mobile source
         run: |
           set -euo pipefail
           rm -rf ks-foto
           mkdir -p ks-foto
-          curl -L --fail --compressed             --retry 3 --connect-timeout 20 --max-time 120             -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18 Safari/605.1.15"             "https://www.ks-fo-to.de/"             -o ks-foto/index.html
+
+          DESKTOP_UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'
+          MOBILE_UA='Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+
+          curl -L --fail --compressed --retry 3 --connect-timeout 20 --max-time 120             -A "$DESKTOP_UA" "https://www.ks-fo-to.de/" -o ks-foto/desktop.html
+
+          curl -L --fail --compressed --retry 3 --connect-timeout 20 --max-time 120             -A "$MOBILE_UA" "https://www.ks-fo-to.de/" -o ks-foto/mobile.html
 
           python3 - <<'PY'
           from pathlib import Path
-          p = Path("ks-foto/index.html")
-          s = p.read_text(encoding="utf-8", errors="ignore")
-          marker = '<base href="https://www.ks-fo-to.de/">\n<meta name="robots" content="noindex,nofollow">'
-          if "<head>" in s:
-              s = s.replace("<head>", "<head>\n" + marker, 1)
-          elif "<HEAD>" in s:
-              s = s.replace("<HEAD>", "<HEAD>\n" + marker, 1)
-          p.write_text(s, encoding="utf-8")
+
+          for name in ("desktop.html", "mobile.html"):
+              p = Path("ks-foto") / name
+              s = p.read_text(encoding="utf-8", errors="ignore")
+              marker = '<base href="https://www.ks-fo-to.de/">\n<meta name="robots" content="noindex,nofollow">'
+              if "<head>" in s:
+                  s = s.replace("<head>", "<head>\n" + marker, 1)
+              elif "<HEAD>" in s:
+                  s = s.replace("<HEAD>", "<HEAD>\n" + marker, 1)
+              p.write_text(s, encoding="utf-8")
+
+          wrapper = """<!doctype html>
+          <html lang="de">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <meta name="robots" content="noindex,nofollow">
+            <title>KS-FOTO Preview</title>
+            <script>
+              const mobile = window.matchMedia("(max-width: 700px)").matches;
+              location.replace(mobile ? "mobile.html" : "desktop.html");
+            </script>
+          </head>
+          <body>
+            <p><a href="mobile.html">Mobile Preview</a></p>
+            <p><a href="desktop.html">Desktop Preview</a></p>
+          </body>
+          </html>"""
+          Path("ks-foto/index.html").write_text(wrapper, encoding="utf-8")
           PY
 
-          printf '%s\n'             'KS-FOTO authorized hybrid mirror preview.'             'HTML captured from the public source; assets may still load from Wix CDN.'             > ks-foto/PREVIEW_INFO.txt
+          printf '%s\n'             'KS-FOTO authorized dual-capture preview.'             'Desktop and mobile are captured independently; assets still load from Wix CDN.'             > ks-foto/PREVIEW_INFO.txt
 
       - name: Commit preview
         run: |
@@ -43,6 +70,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No preview changes."
           else
-            git commit -m "Build KS-FOTO preview mirror"
+            git commit -m "Build KS-FOTO dual desktop mobile preview"
             git push
           fi
