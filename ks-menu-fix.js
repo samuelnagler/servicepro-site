@@ -1,96 +1,144 @@
 (function(){
+  function smallestTextMatch(label){
+    var all=[].slice.call(document.querySelectorAll('h1,h2,h3,h4,h5,h6,p,span,div'));
+    var matches=all.filter(function(el){
+      var t=(el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+      return t===label.toLowerCase();
+    });
+    matches.sort(function(a,b){return a.children.length-b.children.length;});
+    return matches[0]||null;
+  }
+
   function init(){
-    var original=document.getElementById('MENU_AS_CONTAINER_TOGGLE');
-    var menu=document.getElementById('MENU_AS_CONTAINER');
-    if(!original||!menu) return;
+    var sourceMenu=document.getElementById('MENU_AS_CONTAINER');
+    var sourceToggle=document.getElementById('MENU_AS_CONTAINER_TOGGLE');
+    if(!sourceMenu||!sourceToggle) return;
 
-    // Clone the visible Wix hamburger so Wix runtime cannot swallow our click.
-    var trigger=original.cloneNode(true);
-    trigger.id='KS_MENU_TRIGGER';
-    original.style.pointerEvents='none';
-    original.parentNode.insertBefore(trigger, original.nextSibling);
+    // Independent hit target over the visible Wix hamburger.
+    var hit=document.createElement('button');
+    hit.type='button';
+    hit.id='KS_INDEPENDENT_MENU_HIT';
+    hit.setAttribute('aria-label','Navigationsmenü öffnen');
+    hit.style.cssText=[
+      'position:fixed',
+      'top:18px',
+      'right:8px',
+      'width:52px',
+      'height:52px',
+      'padding:0',
+      'margin:0',
+      'border:0',
+      'background:transparent',
+      'z-index:2147483647',
+      'cursor:pointer',
+      '-webkit-tap-highlight-color:transparent'
+    ].join(';');
+    document.body.appendChild(hit);
 
-    trigger.style.position='absolute';
-    trigger.style.inset='0';
-    trigger.style.margin='0';
-    trigger.style.pointerEvents='auto';
-    trigger.style.cursor='pointer';
-    trigger.style.zIndex='2147483647';
+    // Clone the already-rendered original menu so the visual remains identical.
+    var menu=sourceMenu.cloneNode(true);
+    menu.id='KS_CLONED_MOBILE_MENU';
+    menu.querySelectorAll('[id]').forEach(function(el){
+      el.id='KS_'+el.id;
+    });
+    menu.classList.remove('Uym66v','nQIUtw');
+    menu.removeAttribute('data-undisplayed');
+    menu.removeAttribute('aria-hidden');
+    menu.style.cssText=[
+      'display:none',
+      'visibility:visible',
+      'opacity:1',
+      'position:fixed',
+      'inset:0',
+      'width:100vw',
+      'height:100vh',
+      'margin:0',
+      'z-index:2147483600',
+      'overflow:auto'
+    ].join(';');
 
-    // Keep clone layered exactly over the original icon.
-    var host=original.parentElement;
-    if(host && getComputedStyle(host).position==='static') host.style.position='relative';
+    // Force the cloned Wix menu's internal wrappers visible.
+    menu.querySelectorAll('*').forEach(function(el){
+      var cs=getComputedStyle(el);
+      if(cs.visibility==='hidden') el.style.setProperty('visibility','visible','important');
+      if(cs.opacity==='0') el.style.setProperty('opacity','1','important');
+    });
 
-    function setOpen(open){
-      if(open){
-        menu.classList.remove('Uym66v','nQIUtw');
-        menu.removeAttribute('data-undisplayed');
-        menu.setAttribute('aria-hidden','false');
-        menu.style.setProperty('display','block','important');
-        menu.style.setProperty('visibility','visible','important');
-        menu.style.setProperty('opacity','1','important');
-        menu.style.setProperty('position','fixed','important');
-        menu.style.setProperty('inset','0','important');
-        menu.style.setProperty('z-index','2147483000','important');
+    document.body.appendChild(menu);
 
-        var overlay=document.getElementById('overlay-MENU_AS_CONTAINER');
-        var container=document.getElementById('container-MENU_AS_CONTAINER');
-        if(overlay){
-          overlay.style.setProperty('display','initial','important');
-          overlay.style.setProperty('visibility','visible','important');
-          overlay.style.setProperty('opacity','1','important');
-        }
-        if(container){
-          container.style.setProperty('visibility','visible','important');
-          container.style.setProperty('opacity','1','important');
-        }
-        document.documentElement.style.overflow='hidden';
-        document.body.style.overflow='hidden';
-        trigger.setAttribute('aria-expanded','true');
-        trigger.setAttribute('aria-label','Navigationsmenü schließen');
-      }else{
-        menu.classList.add('Uym66v','nQIUtw');
-        menu.setAttribute('data-undisplayed','true');
-        menu.setAttribute('aria-hidden','true');
-        menu.style.removeProperty('display');
-        menu.style.removeProperty('visibility');
-        menu.style.removeProperty('opacity');
-        menu.style.removeProperty('position');
-        menu.style.removeProperty('inset');
-        menu.style.removeProperty('z-index');
-        document.documentElement.style.overflow='';
-        document.body.style.overflow='';
-        trigger.setAttribute('aria-expanded','false');
-        trigger.setAttribute('aria-label','Navigationsmenü öffnen');
-      }
+    var opened=false;
+    function close(){
+      opened=false;
+      menu.style.setProperty('display','none','important');
+      document.documentElement.style.overflow='';
+      document.body.style.overflow='';
+      hit.setAttribute('aria-label','Navigationsmenü öffnen');
+    }
+    function open(){
+      opened=true;
+      menu.style.setProperty('display','block','important');
+      menu.style.setProperty('visibility','visible','important');
+      menu.style.setProperty('opacity','1','important');
+      document.documentElement.style.overflow='hidden';
+      document.body.style.overflow='hidden';
+      hit.setAttribute('aria-label','Navigationsmenü schließen');
     }
 
-    setOpen(false);
-
-    function toggle(e){
+    hit.addEventListener('click',function(e){
       e.preventDefault();
       e.stopPropagation();
-      e.stopImmediatePropagation();
-      setOpen(menu.getAttribute('data-undisplayed')==='true');
-    }
-
-    trigger.addEventListener('click',toggle,true);
-    trigger.addEventListener('touchend',toggle,true);
-    trigger.addEventListener('keydown',function(e){
-      if(e.key==='Enter'||e.key===' '){ toggle(e); }
-    },true);
+      opened?close():open();
+    });
+    hit.addEventListener('touchend',function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      opened?close():open();
+    },{passive:false});
 
     menu.addEventListener('click',function(e){
       var a=e.target.closest && e.target.closest('a');
-      if(a) setTimeout(function(){setOpen(false)},0);
-      else if(e.target.id==='overlay-MENU_AS_CONTAINER') setOpen(false);
-    },true);
+      if(!a) return;
+      e.preventDefault();
+      var label=(a.textContent||'').replace(/\s+/g,' ').trim();
+
+      close();
+
+      if(label==='Start'){
+        window.scrollTo({top:0,behavior:'smooth'});
+        return;
+      }
+
+      if(label==='Über mich'){
+        var about=smallestTextMatch('Über mich') || smallestTextMatch('ÜBER MICH');
+        if(about) about.scrollIntoView({behavior:'smooth',block:'start'});
+        return;
+      }
+
+      if(label==='Instagram'){
+        var insta=smallestTextMatch('Instagram') || smallestTextMatch('INSTAGRAM');
+        if(insta) insta.scrollIntoView({behavior:'smooth',block:'start'});
+        return;
+      }
+
+      if(label==='Impressum'){
+        var imp=smallestTextMatch('Impressum') || smallestTextMatch('IMPRESSUM');
+        if(imp) imp.scrollIntoView({behavior:'smooth',block:'start'});
+        return;
+      }
+
+      if(a.href) location.href=a.href;
+    });
 
     document.addEventListener('keydown',function(e){
-      if(e.key==='Escape') setOpen(false);
+      if(opened && e.key==='Escape') close();
     });
+
+    close();
   }
 
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
-  else init();
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',init,{once:true});
+  } else {
+    init();
+  }
 })();
