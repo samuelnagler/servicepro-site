@@ -1,0 +1,49 @@
+name: Build KS-FOTO preview mirror
+
+on:
+  push:
+    paths:
+      - ".github/workflows/ks-foto-mirror.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Capture public authorized source
+        run: |
+          set -euo pipefail
+          rm -rf ks-foto
+          mkdir -p ks-foto
+          curl -L --fail --compressed             --retry 3 --connect-timeout 20 --max-time 120             -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18 Safari/605.1.15"             "https://www.ks-fo-to.de/"             -o ks-foto/index.html
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("ks-foto/index.html")
+          s = p.read_text(encoding="utf-8", errors="ignore")
+          marker = '<base href="https://www.ks-fo-to.de/">\n<meta name="robots" content="noindex,nofollow">'
+          if "<head>" in s:
+              s = s.replace("<head>", "<head>\n" + marker, 1)
+          elif "<HEAD>" in s:
+              s = s.replace("<HEAD>", "<HEAD>\n" + marker, 1)
+          p.write_text(s, encoding="utf-8")
+          PY
+
+          printf '%s\n'             'KS-FOTO authorized hybrid mirror preview.'             'HTML captured from the public source; assets may still load from Wix CDN.'             > ks-foto/PREVIEW_INFO.txt
+
+      - name: Commit preview
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ks-foto
+          if git diff --cached --quiet; then
+            echo "No preview changes."
+          else
+            git commit -m "Build KS-FOTO preview mirror"
+            git push
+          fi
