@@ -1,9 +1,8 @@
 name: Build KS-FOTO preview mirror
 
 on:
-  push:
-    paths:
-      - ".github/workflows/ks-foto-mirror.yml"
+  issues:
+    types: [opened]
   workflow_dispatch:
 
 permissions:
