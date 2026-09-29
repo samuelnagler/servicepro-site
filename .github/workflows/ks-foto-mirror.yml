@@ -42,7 +42,8 @@ jobs:
                   s = s.replace("<HEAD>", "<HEAD>\n" + marker, 1)
 
               if name == "mobile.html":
-                  extra = '<script src="https://samuelnagler.github.io/servicepro-site/ks-menu-fix.js?v=3" defer></script>'
+                  menu_js = Path("ks-menu-fix.js").read_text(encoding="utf-8")
+                  extra = "<script id=\"ks-inline-menu-fix\">\n" + menu_js + "\n</script>"
                   if "</body>" in s:
                       s = s.replace("</body>", extra + "\n</body>", 1)
                   else:
