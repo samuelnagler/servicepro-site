@@ -23,9 +23,11 @@ jobs:
           DESKTOP_UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'
           MOBILE_UA='Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
 
-          curl -L --fail --compressed --retry 3 --connect-timeout 20 --max-time 120             -A "$DESKTOP_UA" "https://www.ks-fo-to.de/" -o ks-foto/desktop.html
+          curl -L --fail --compressed --retry 3 --connect-timeout 20 --max-time 120 \
+            -A "$DESKTOP_UA" "https://www.ks-fo-to.de/" -o ks-foto/desktop.html
 
-          curl -L --fail --compressed --retry 3 --connect-timeout 20 --max-time 120             -A "$MOBILE_UA" "https://www.ks-fo-to.de/" -o ks-foto/mobile.html
+          curl -L --fail --compressed --retry 3 --connect-timeout 20 --max-time 120 \
+            -A "$MOBILE_UA" "https://www.ks-fo-to.de/" -o ks-foto/mobile.html
 
           python3 - <<'PY'
           from pathlib import Path
@@ -40,83 +42,11 @@ jobs:
                   s = s.replace("<HEAD>", "<HEAD>\n" + marker, 1)
 
               if name == "mobile.html":
-                  menu_fix = r"""
-<style id="ks-menu-fix-style">
-#MENU_AS_CONTAINER.ks-menu-open{
-  display:block!important;
-  visibility:visible!important;
-  opacity:1!important;
-  position:fixed!important;
-  inset:0!important;
-  z-index:2147483000!important;
-}
-#MENU_AS_CONTAINER.ks-menu-open #container-MENU_AS_CONTAINER,
-#MENU_AS_CONTAINER.ks-menu-open #overlay-MENU_AS_CONTAINER{
-  visibility:visible!important;
-  opacity:1!important;
-}
-body.ks-menu-open-body{overflow:hidden!important;}
-</style>
-<script id="ks-menu-fix">
-(function(){
-  function init(){
-    var toggle=document.getElementById('MENU_AS_CONTAINER_TOGGLE');
-    var menu=document.getElementById('MENU_AS_CONTAINER');
-    if(!toggle||!menu) return;
-
-    function closeMenu(){
-      menu.classList.remove('ks-menu-open');
-      menu.setAttribute('data-undisplayed','true');
-      menu.setAttribute('aria-hidden','true');
-      document.body.classList.remove('ks-menu-open-body');
-      toggle.setAttribute('aria-label','Navigationsmenü öffnen');
-      toggle.setAttribute('aria-expanded','false');
-    }
-
-    function openMenu(){
-      menu.classList.add('ks-menu-open');
-      menu.removeAttribute('data-undisplayed');
-      menu.setAttribute('aria-hidden','false');
-      document.body.classList.add('ks-menu-open-body');
-      toggle.setAttribute('aria-label','Navigationsmenü schließen');
-      toggle.setAttribute('aria-expanded','true');
-    }
-
-    closeMenu();
-
-    toggle.addEventListener('click',function(e){
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      menu.classList.contains('ks-menu-open') ? closeMenu() : openMenu();
-    },true);
-
-    toggle.addEventListener('keydown',function(e){
-      if(e.key==='Enter'||e.key===' '){
-        e.preventDefault();
-        menu.classList.contains('ks-menu-open') ? closeMenu() : openMenu();
-      }
-    },true);
-
-    var overlay=document.getElementById('overlay-MENU_AS_CONTAINER');
-    if(overlay) overlay.addEventListener('click',closeMenu,true);
-
-    menu.querySelectorAll('a').forEach(function(a){
-      a.addEventListener('click',function(){ setTimeout(closeMenu,0); },true);
-    });
-
-    document.addEventListener('keydown',function(e){
-      if(e.key==='Escape') closeMenu();
-    });
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
-  else init();
-})();
-</script>
-"""
+                  extra = '<script src="https://samuelnagler.github.io/servicepro-site/ks-menu-fix.js?v=1" defer></script>'
                   if "</body>" in s:
-                      s = s.replace("</body>", menu_fix + "\n</body>", 1)
+                      s = s.replace("</body>", extra + "\n</body>", 1)
                   else:
-                      s += menu_fix
+                      s += extra
 
               p.write_text(s, encoding="utf-8")
 
@@ -140,7 +70,10 @@ body.ks-menu-open-body{overflow:hidden!important;}
           Path("ks-foto/index.html").write_text(wrapper, encoding="utf-8")
           PY
 
-          printf '%s\n'             'KS-FOTO authorized dual-capture preview.'             'Desktop and mobile are captured independently; assets still load from Wix CDN.'             > ks-foto/PREVIEW_INFO.txt
+          printf '%s\n' \
+            'KS-FOTO authorized dual-capture preview.' \
+            'Desktop and mobile are captured independently; assets still load from Wix CDN.' \
+            > ks-foto/PREVIEW_INFO.txt
 
       - name: Commit preview
         run: |
