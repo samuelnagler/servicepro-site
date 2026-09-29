@@ -38,6 +38,86 @@ jobs:
                   s = s.replace("<head>", "<head>\n" + marker, 1)
               elif "<HEAD>" in s:
                   s = s.replace("<HEAD>", "<HEAD>\n" + marker, 1)
+
+              if name == "mobile.html":
+                  menu_fix = r"""
+<style id="ks-menu-fix-style">
+#MENU_AS_CONTAINER.ks-menu-open{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  position:fixed!important;
+  inset:0!important;
+  z-index:2147483000!important;
+}
+#MENU_AS_CONTAINER.ks-menu-open #container-MENU_AS_CONTAINER,
+#MENU_AS_CONTAINER.ks-menu-open #overlay-MENU_AS_CONTAINER{
+  visibility:visible!important;
+  opacity:1!important;
+}
+body.ks-menu-open-body{overflow:hidden!important;}
+</style>
+<script id="ks-menu-fix">
+(function(){
+  function init(){
+    var toggle=document.getElementById('MENU_AS_CONTAINER_TOGGLE');
+    var menu=document.getElementById('MENU_AS_CONTAINER');
+    if(!toggle||!menu) return;
+
+    function closeMenu(){
+      menu.classList.remove('ks-menu-open');
+      menu.setAttribute('data-undisplayed','true');
+      menu.setAttribute('aria-hidden','true');
+      document.body.classList.remove('ks-menu-open-body');
+      toggle.setAttribute('aria-label','Navigationsmenü öffnen');
+      toggle.setAttribute('aria-expanded','false');
+    }
+
+    function openMenu(){
+      menu.classList.add('ks-menu-open');
+      menu.removeAttribute('data-undisplayed');
+      menu.setAttribute('aria-hidden','false');
+      document.body.classList.add('ks-menu-open-body');
+      toggle.setAttribute('aria-label','Navigationsmenü schließen');
+      toggle.setAttribute('aria-expanded','true');
+    }
+
+    closeMenu();
+
+    toggle.addEventListener('click',function(e){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      menu.classList.contains('ks-menu-open') ? closeMenu() : openMenu();
+    },true);
+
+    toggle.addEventListener('keydown',function(e){
+      if(e.key==='Enter'||e.key===' '){
+        e.preventDefault();
+        menu.classList.contains('ks-menu-open') ? closeMenu() : openMenu();
+      }
+    },true);
+
+    var overlay=document.getElementById('overlay-MENU_AS_CONTAINER');
+    if(overlay) overlay.addEventListener('click',closeMenu,true);
+
+    menu.querySelectorAll('a').forEach(function(a){
+      a.addEventListener('click',function(){ setTimeout(closeMenu,0); },true);
+    });
+
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape') closeMenu();
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
+  else init();
+})();
+</script>
+"""
+                  if "</body>" in s:
+                      s = s.replace("</body>", menu_fix + "\n</body>", 1)
+                  else:
+                      s += menu_fix
+
               p.write_text(s, encoding="utf-8")
 
           wrapper = """<!doctype html>
